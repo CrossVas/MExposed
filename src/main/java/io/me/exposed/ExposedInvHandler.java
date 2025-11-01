@@ -1,113 +1,112 @@
 package io.me.exposed;
 
 import appeng.api.config.Actionable;
-import appeng.api.networking.security.IActionSource;
-import appeng.api.stacks.AEFluidKey;
-import appeng.api.stacks.AEItemKey;
-import appeng.me.storage.NetworkStorage;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.material.EmptyFluid;
+import appeng.api.networking.storage.IStorageGrid;
+import appeng.api.storage.IMEInventoryHandler;
+import appeng.api.storage.IStorageChannel;
+import appeng.api.storage.channels.IFluidStorageChannel;
+import appeng.api.storage.channels.IItemStorageChannel;
+import appeng.api.storage.data.IAEFluidStack;
+import appeng.api.storage.data.IAEItemStack;
+import appeng.api.storage.data.IItemList;
+import appeng.core.Api;
+import appeng.fluids.util.AEFluidStack;
+import appeng.me.helpers.BaseActionSource;
+import appeng.util.item.AEItemStack;
+import net.minecraft.item.ItemStack;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.capability.IFluidHandler;
 import net.minecraftforge.items.IItemHandler;
-import org.jetbrains.annotations.NotNull;
 
+import javax.annotation.Nonnull;
+import java.util.ArrayList;
 import java.util.List;
 
 public class ExposedInvHandler implements IItemHandler, IFluidHandler {
 
-    NetworkStorage storage;
+    private final IMEInventoryHandler<IAEItemStack> itemStorage;
+    private final IMEInventoryHandler<IAEFluidStack> fluidStorage;
 
-    public ExposedInvHandler(NetworkStorage storage) {
-        this.storage = storage;
+    private final IStorageChannel<IAEItemStack> itemChannel;
+    private final IStorageChannel<IAEFluidStack> fluidChannel;
+
+    public ExposedInvHandler(IStorageGrid storage) {
+        this.itemChannel = Api.instance().storage().getStorageChannel(IItemStorageChannel.class);
+        this.fluidChannel = Api.instance().storage().getStorageChannel(IFluidStorageChannel.class);
+        this.itemStorage = storage.getInventory(itemChannel);
+        this.fluidStorage = storage.getInventory(fluidChannel);
     }
 
-    List<AEFluidKey> getFluidKeys() {
-        return storage.getAvailableStacks().keySet().stream().filter(aeKey -> aeKey instanceof AEFluidKey).map(aeKey -> ((AEFluidKey) aeKey)).toList();
+    // Items
+    private List<IAEItemStack> getItemStacks() {
+        IItemList<IAEItemStack> list = itemChannel.createList();
+        itemStorage.getAvailableItems(list);
+        List<IAEItemStack> stacks = new ArrayList<>();
+        for (IAEItemStack s : list) stacks.add(s.copy());
+        return stacks;
     }
 
-    List<AEItemKey> getItemKeys() {
-        return storage.getAvailableStacks().keySet().stream().filter(aeKey -> aeKey instanceof AEItemKey).map(aeKey -> ((AEItemKey) aeKey)).toList();
-    }
-
-    @Override
-    public int getTanks() {
-        return getFluidKeys().size();
-    }
-
-    @NotNull
-    @Override
-    public FluidStack getFluidInTank(int tank) {
-        if (tank >= getFluidKeys().size())
-            return FluidStack.EMPTY;
-
-        return getFluidKeys().get(tank).toStack(((int) storage.extract(getFluidKeys().get(tank), Integer.MAX_VALUE, Actionable.SIMULATE, IActionSource.empty())));
-    }
-
-    @Override
-    public int getTankCapacity(int tank) {
-        return Integer.MAX_VALUE;
-    }
-
-    @Override
-    public boolean isFluidValid(int tank, @NotNull FluidStack fluidStack) {
-        return storage.insert(AEFluidKey.of(fluidStack), fluidStack.getAmount(), Actionable.SIMULATE, IActionSource.empty()) > 0;
-    }
-
-    @Override
-    public int fill(FluidStack fluidStack, FluidAction fluidAction) {
-        if (MExposedConfig.COMMON.readOnly.get()) return 0;
-        return (int) storage.insert(AEFluidKey.of(fluidStack), fluidStack.getAmount(), fluidAction == FluidAction.EXECUTE ? Actionable.MODULATE : Actionable.SIMULATE, IActionSource.empty());
-    }
-
-    @NotNull
-    @Override
-    public FluidStack drain(FluidStack fluidStack, FluidAction fluidAction) {
-        FluidStack copy = fluidStack.copy();
-        if (copy.getFluid() instanceof EmptyFluid) return FluidStack.EMPTY;
-
-        copy.setAmount(((int) storage.extract(AEFluidKey.of(fluidStack), fluidStack.getAmount(), fluidAction == FluidAction.EXECUTE ? Actionable.MODULATE : Actionable.SIMULATE, IActionSource.empty())));
-        return copy.getAmount() > 0 ? copy : FluidStack.EMPTY;
-    }
-
-    @NotNull
-    @Override
-    public FluidStack drain(int amount, FluidAction fluidAction) {
-        return drain(getFluidInTank(0), fluidAction);
+    // Fluids
+    private List<IAEFluidStack> getFluidStacks() {
+        IItemList<IAEFluidStack> list = fluidChannel.createList();
+        fluidStorage.getAvailableItems(list);
+        List<IAEFluidStack> stacks = new ArrayList<>();
+        for (IAEFluidStack s : list) stacks.add(s.copy());
+        return stacks;
     }
 
     @Override
     public int getSlots() {
-        return getItemKeys().size() + 16;
+        return getItemStacks().size() + 16;
     }
 
-    @NotNull
+    @Nonnull
     @Override
     public ItemStack getStackInSlot(int slot) {
-        if (slot >= getItemKeys().size())
-            return ItemStack.EMPTY;
-
-        return getItemKeys().get(slot).toStack(((int) storage.extract(getItemKeys().get(slot), Integer.MAX_VALUE, Actionable.SIMULATE, IActionSource.empty())));
+        List<IAEItemStack> stacks = getItemStacks();
+        if (slot >= stacks.size()) return ItemStack.EMPTY;
+        IAEItemStack aeStack = itemStorage.extractItems(stacks.get(slot), Actionable.SIMULATE, new BaseActionSource());
+        return stacks.get(slot).setStackSize(aeStack.getStackSize()).createItemStack();
     }
 
-    @NotNull
+    @Nonnull
     @Override
-    public ItemStack insertItem(int slot, @NotNull ItemStack stack, boolean simulate) {
+    public ItemStack insertItem(int slot, @Nonnull ItemStack stack, boolean simulate) {
+        if (stack.isEmpty()) return ItemStack.EMPTY;
+
         ItemStack copy = stack.copy();
         if (MExposedConfig.COMMON.readOnly.get()) return copy;
-        copy.setCount(copy.getCount() - (int) storage.insert(AEItemKey.of(stack), stack.getCount(), simulate ? Actionable.SIMULATE : Actionable.MODULATE, IActionSource.empty()));
-        return copy;
+        IAEItemStack toInject = AEItemStack.fromItemStack(stack);
+        if (toInject == null) return stack;
+
+        IAEItemStack leftover = itemStorage.injectItems(toInject, simulate ? Actionable.SIMULATE : Actionable.MODULATE, new BaseActionSource());
+
+        if (leftover == null) {
+            return ItemStack.EMPTY;
+        } else {
+            copy.setCount((int) leftover.getStackSize());
+            return copy;
+        }
     }
 
-    @NotNull
+    @Nonnull
     @Override
     public ItemStack extractItem(int slot, int amount, boolean simulate) {
-        ItemStack copy = getStackInSlot(slot).copy();
-        AEItemKey key = AEItemKey.of(copy);
-        if (key == null) return ItemStack.EMPTY;
+        if (amount <= 0) return ItemStack.EMPTY;
 
-        copy.setCount((int) storage.extract(key, amount, simulate ? Actionable.SIMULATE : Actionable.MODULATE, IActionSource.empty()));
-        return copy;
+        List<IAEItemStack> stacks = getItemStacks();
+        if (slot < 0 || slot >= stacks.size()) return ItemStack.EMPTY;
+
+        IAEItemStack toExtract = stacks.get(slot).copy();
+        toExtract.setStackSize(amount);
+
+        IAEItemStack extracted = itemStorage.extractItems(toExtract, simulate ? Actionable.SIMULATE : Actionable.MODULATE, new BaseActionSource());
+        if (extracted == null || extracted.getStackSize() <= 0) return ItemStack.EMPTY;
+
+        ItemStack result = extracted.createItemStack();
+        long count = Math.min(extracted.getStackSize(), Integer.MAX_VALUE);
+        result.setCount((int) count);
+        return result;
     }
 
     @Override
@@ -116,7 +115,75 @@ public class ExposedInvHandler implements IItemHandler, IFluidHandler {
     }
 
     @Override
-    public boolean isItemValid(int slot, @NotNull ItemStack stack) {
+    public boolean isItemValid(int slot, @Nonnull ItemStack stack) {
         return insertItem(slot, stack, true).getCount() == 0;
+    }
+
+    @Override
+    public int getTanks() {
+        return getFluidStacks().size();
+    }
+
+    @Nonnull
+    @Override
+    public FluidStack getFluidInTank(int tank) {
+        List<IAEFluidStack> fluids = getFluidStacks();
+        if (tank >= fluids.size()) return FluidStack.EMPTY;
+        IAEFluidStack aeFluidStack = fluidStorage.extractItems(fluids.get(tank), Actionable.SIMULATE, new BaseActionSource());
+        return aeFluidStack.getFluidStack();
+    }
+
+    @Override
+    public int getTankCapacity(int tank) {
+        return Integer.MAX_VALUE;
+    }
+
+    @Override
+    public boolean isFluidValid(int tank, @Nonnull FluidStack stack) {
+        IAEFluidStack aeFluidStack = fluidStorage.injectItems(getFluidStacks().get(tank), Actionable.SIMULATE, new BaseActionSource());
+        return aeFluidStack.getStackSize() > 0;
+    }
+
+    @Override
+    public int fill(FluidStack stack, FluidAction action) {
+        if (stack.isEmpty() || MExposedConfig.COMMON.readOnly.get()) return 0;
+
+        IAEFluidStack toInsert = AEFluidStack.fromFluidStack(stack);
+        if (toInsert == null) return 0;
+
+        IAEFluidStack leftover = fluidStorage.injectItems(
+                toInsert.copy(),
+                action == FluidAction.EXECUTE ? Actionable.MODULATE : Actionable.SIMULATE,
+                new BaseActionSource());
+
+        long inserted = (leftover == null) ? toInsert.getStackSize() : (toInsert.getStackSize() - leftover.getStackSize());
+        return (int) Math.min(inserted, Integer.MAX_VALUE);
+    }
+
+    @Nonnull
+    @Override
+    public FluidStack drain(FluidStack resource, FluidAction action) {
+        if (resource.isEmpty()) return FluidStack.EMPTY;
+
+        IAEFluidStack request = AEFluidStack.fromFluidStack(resource);
+        if (request == null) return FluidStack.EMPTY;
+
+        IAEFluidStack extracted = fluidStorage.extractItems(
+                request.copy(),
+                action == FluidAction.EXECUTE ? Actionable.MODULATE : Actionable.SIMULATE,
+                new BaseActionSource());
+
+        if (extracted == null || extracted.getStackSize() <= 0) return FluidStack.EMPTY;
+
+        FluidStack out = extracted.getFluidStack().copy();
+        long count = Math.min(extracted.getStackSize(), Integer.MAX_VALUE);
+        out.setAmount((int) count);
+        return out;
+    }
+
+    @Nonnull
+    @Override
+    public FluidStack drain(int maxDrain, FluidAction action) {
+        return drain(getFluidInTank(0), action);
     }
 }
