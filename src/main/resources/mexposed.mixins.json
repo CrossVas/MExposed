@@ -1,0 +1,9 @@
+{
+  "required": true,
+  "package": "io.me.exposed.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [
+    "ControllerBlockEntityMixin"
+  ],
+  "minVersion": "0.8"
+}
