@@ -38,4 +38,10 @@ public abstract class ControllerBlockEntityMixin extends AENetworkPowerBlockEnti
         }
         return super.getCapability(cap, side);
     }
+
+    @Override
+    public void invalidateCaps() {
+        super.invalidateCaps();
+        exposedCap.invalidate();
+    }
 }
