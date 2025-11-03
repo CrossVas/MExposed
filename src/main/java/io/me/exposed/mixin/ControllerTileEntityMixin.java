@@ -40,4 +40,10 @@ public abstract class ControllerTileEntityMixin extends AENetworkPowerTileEntity
         }
         return super.getCapability(cap, side);
     }
+
+    @Override
+    protected void invalidateCaps() {
+        super.invalidateCaps();
+        exposedCap.invalidate();
+    }
 }
