@@ -7,9 +7,9 @@ import appeng.api.stacks.AEItemKey;
 import appeng.me.storage.NetworkStorage;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.material.EmptyFluid;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.capability.IFluidHandler;
-import net.minecraftforge.items.IItemHandler;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
+import net.neoforged.neoforge.items.IItemHandler;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
