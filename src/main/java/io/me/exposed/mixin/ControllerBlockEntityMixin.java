@@ -3,8 +3,8 @@ package io.me.exposed.mixin;
 import appeng.api.networking.IManagedGridNode;
 import appeng.blockentity.grid.AENetworkPowerBlockEntity;
 import appeng.blockentity.networking.ControllerBlockEntity;
-import appeng.me.storage.NetworkStorage;
-import io.me.exposed.ExposedInvHandler;
+import io.me.exposed.MExposed;
+import io.me.exposed.snapshot.SnapshotInvHandler;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -21,7 +21,7 @@ import org.spongepowered.asm.mixin.Unique;
 public abstract class ControllerBlockEntityMixin extends AENetworkPowerBlockEntity {
 
     @Unique
-    private LazyOptional<ExposedInvHandler> exposedCap = LazyOptional.empty();
+    private LazyOptional<SnapshotInvHandler> exposedCap = LazyOptional.empty();
 
     public ControllerBlockEntityMixin(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState blockState) {
         super(blockEntityType, pos, blockState);
@@ -32,7 +32,7 @@ public abstract class ControllerBlockEntityMixin extends AENetworkPowerBlockEnti
         IManagedGridNode node = getMainNode();
         if (node != null && node.getGrid() != null && (cap == ForgeCapabilities.ITEM_HANDLER || cap == ForgeCapabilities.FLUID_HANDLER)) {
             if (!exposedCap.isPresent()) {
-                exposedCap = LazyOptional.of(() -> new ExposedInvHandler(((NetworkStorage) node.getGrid().getStorageService().getInventory())));
+                exposedCap = LazyOptional.of(() -> MExposed.createHandler((ControllerBlockEntity) (Object) this));
             }
             return exposedCap.cast();
         }
