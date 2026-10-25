@@ -2,7 +2,9 @@
   "required": true,
   "package": "io.me.exposed.mixin",
   "mixins": [
-    "ControllerTileEntityMixin"
+    "ControllerTileEntityMixin",
+    "GridStorageCacheMixin",
+    "NetworkMonitorMixin"
   ],
   "minVersion": "0.8"
 }
