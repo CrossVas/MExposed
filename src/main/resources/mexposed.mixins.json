@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "io.me.exposed.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [
+    "NetworkStorageMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

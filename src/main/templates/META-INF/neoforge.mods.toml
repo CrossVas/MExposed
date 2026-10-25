@@ -48,8 +48,8 @@ authors="${mod_authors}" #optional
 description='''${mod_description}'''
 
 # The [[mixins]] block allows you to declare your mixin config to FML so that it gets loaded.
-#[[mixins]]
-#config="mexposed.mixins.json"
+[[mixins]]
+config="mexposed.mixins.json"
 
 # Here's another dependency
 [[dependencies.${mod_id}]]

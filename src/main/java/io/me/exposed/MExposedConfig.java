@@ -16,10 +16,16 @@ public class MExposedConfig {
 
     public static class Common {
         public final ModConfigSpec.BooleanValue readOnly;
+        public final ModConfigSpec.BooleanValue debug;
 
         public Common(ModConfigSpec.Builder builder) {
             builder.push("general");
             readOnly = builder.comment("Make AE2 Controller work in ReadOnly Mode, meaning items can be extracted, but can't be inserted.").translation("Read Only").define("readOnly", true);
+            debug = builder.comment("Log extra diagnostics (snapshot mismatches) to the game log.").define("debug", false);
         }
+    }
+
+    public static boolean isDebug() {
+        return (COMMON_SPEC.isLoaded() && COMMON.debug.get());
     }
 }
