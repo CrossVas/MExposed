@@ -3,7 +3,8 @@
   "package": "io.me.exposed.mixin",
   "compatibilityLevel": "JAVA_17",
   "mixins": [
-    "ControllerBlockEntityMixin"
+    "ControllerBlockEntityMixin",
+    "NetworkStorageMixin"
   ],
   "minVersion": "0.8"
 }
